@@ -10,6 +10,13 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>7.3</LangVersion>
+    <PackageProjectUrl></PackageProjectUrl>
+    <PackageIconUrl>https://unitedwindowmfg.com/wp-content/uploads/2017/02/New-Logo-4.png</PackageIconUrl>
+    <RepositoryUrl>https://github.com/vergaraunited/MobileDeliveryClient</RepositoryUrl>
+    <RepositoryType>Git</RepositoryType>
+    <Description>Mobile Delivery Client base code for all clients.</Description>
+    <Version>1.1.0</Version>
+    <PackageReleaseNotes>Added icon. added nuspec, .gitignore *.nupkg, Update UMDGeneral</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,11 +25,8 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" Version="1.3.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\MobileDeliveryLogger\MobileDeliveryLogger.csproj" />
-    <ProjectReference Include="..\UMDGeneral\UMDGeneral.csproj" />
+    <PackageReference Include="MobileDeliveryLogger" Version="1.0.0" />
+    <PackageReference Include="UMDGeneral" Version="1.1.0" />
   </ItemGroup>
 
 </Project>
