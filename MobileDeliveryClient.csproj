@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup Label="Globals">
     <SccProjectName>SAK</SccProjectName>
@@ -15,9 +15,16 @@
     <RepositoryUrl>https://github.com/vergaraunited/MobileDeliveryClient</RepositoryUrl>
     <RepositoryType>Git</RepositoryType>
     <Description>Mobile Delivery Client base code for all clients.</Description>
-    <Version>1.1.0</Version>
-    <PackageReleaseNotes>Added icon. added nuspec, .gitignore *.nupkg, Update UMDGeneral</PackageReleaseNotes>
+    <Version>1.3.1</Version>
+    <PackageReleaseNotes>Adding references to the nuget package.  Mainly UMDGeneral which hosts logger.</PackageReleaseNotes>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <AssemblyVersion>1.3.1.0</AssemblyVersion>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="MobileDeliveryClient.1.2.1.nupkg" />
+    <None Remove="MobileDeliveryClient.csproj.vspscc" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="LibLog" Version="5.0.6">
@@ -25,14 +32,10 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" Version="1.3.0" />
-  </ItemGroup>
- <ItemGroup Condition="'$(Configuration)' == 'Release'">
-    <PackageReference Include="MobileDeliveryLogger" Version="1.1.1" />
-    <PackageReference Include="UMDGeneral" Version="1.2.2" />
+    <PackageReference Include="MobileDeliveryGeneral" Version="1.3.0" />
   </ItemGroup>
   
-  <ItemGroup Condition="'$(Configuration)' != 'Release'">
-    <ProjectReference Include="../MobileDeliveryLogger\MobileDeliveryLogger.csproj" />
-    <ProjectReference Include="../UMDGeneral\UMDGeneral.csproj" />
-  </ItemGroup>
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <Exec Command="nuget restore $(ProjectPath)" />
+  </Target>
 </Project>
