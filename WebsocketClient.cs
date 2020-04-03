@@ -6,7 +6,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using UMDGeneral.Utilities;
+using MobileDeliveryGeneral.Utilities;
 using MobileDeliveryClient.Exceptions;
 using MobileDeliveryClient.Threading;
 
