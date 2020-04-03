@@ -15,11 +15,11 @@
     <RepositoryUrl>https://github.com/vergaraunited/MobileDeliveryClient</RepositoryUrl>
     <RepositoryType>Git</RepositoryType>
     <Description>Mobile Delivery Client base code for all clients.</Description>
-    <Version>1.4.0</Version>
+    <Version>1.4.1</Version>
     <PackageReleaseNotes>Adding references to the nuget package.  Mainly UMDGeneral which hosts logger.
 With Symbols</PackageReleaseNotes>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <AssemblyVersion>1.4.0.0</AssemblyVersion>
+    <AssemblyVersion>1.4.1.0</AssemblyVersion>
     <IncludeSymbols>true</IncludeSymbols>
   </PropertyGroup>
 
@@ -34,7 +34,7 @@ With Symbols</PackageReleaseNotes>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" Version="1.3.0" />
-    <PackageReference Include="MobileDeliveryGeneral" Version="1.4.0" />
+    <PackageReference Include="MobileDeliveryGeneral" Version="1.4.1" />
   </ItemGroup>
   
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
