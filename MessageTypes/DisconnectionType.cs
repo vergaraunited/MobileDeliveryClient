@@ -1,4 +1,4 @@
-﻿namespace MobileDeliveryClient
+﻿namespace MobileDeliveryClient.Interfaces
 {
     /// <summary>
     /// Type that specify happened disconnection

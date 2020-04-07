@@ -3,8 +3,9 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Threading.Tasks;
 using MobileDeliveryGeneral.Utilities;
+using MobileDeliveryClient.MessageTypes;
 
-namespace MobileDeliveryClient
+namespace MobileDeliveryClient.Interfaces
 {
     /// <summary>
     /// A simple websocket client with built-in reconnection and error handling

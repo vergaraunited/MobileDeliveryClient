@@ -9,6 +9,8 @@ using System.Threading.Tasks;
 using MobileDeliveryGeneral.Utilities;
 using MobileDeliveryClient.Exceptions;
 using MobileDeliveryClient.Threading;
+using MobileDeliveryClient.MessageTypes;
+using MobileDeliveryClient.Interfaces;
 
 namespace MobileDeliveryClient
 {

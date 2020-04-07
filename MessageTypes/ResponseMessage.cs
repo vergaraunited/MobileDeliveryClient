@@ -1,6 +1,6 @@
 ﻿using System.Net.WebSockets;
 
-namespace MobileDeliveryClient
+namespace MobileDeliveryClient.MessageTypes
 {
     /// <summary>
     /// Received message, could be Text or Binary

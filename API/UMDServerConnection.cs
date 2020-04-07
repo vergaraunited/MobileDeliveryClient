@@ -4,10 +4,12 @@ using System.Collections.Generic;
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
-using MobileDeliveryGeneral.Interfaces;
 using MobileDeliveryGeneral.Settings;
 using MobileDeliveryGeneral.Utilities;
+using MobileDeliveryGeneral.Interfaces;
 using static MobileDeliveryGeneral.Definitions.MsgTypes;
+using MobileDeliveryClient.Interfaces;
+using MobileDeliveryClient.MessageTypes;
 
 namespace MobileDeliveryClient.API
 {
@@ -33,7 +35,7 @@ namespace MobileDeliveryClient.API
             port = set.port;
             name = set.name;
             this.rm = rm;
-            sm = new SendMsgDelegate(SendWinsysCommand);
+            sm = new SendMsgDelegate(SendCommand);
             Logger.AppName = name;
         }
 
@@ -51,7 +53,7 @@ namespace MobileDeliveryClient.API
             Logger.Debug("Received Message Event");
         }
 
-        public bool SendWinsysCommand(isaCommand inputparam)
+        public bool SendCommand(isaCommand inputparam)
         {
             try
             {
@@ -233,7 +235,7 @@ namespace MobileDeliveryClient.API
                         {
                             Logger.Info($"Disconnection Manager API Client to type: {type} , url: {client.Url}, name {name} {client.Name}");
                         }));
-                        client.MessageReceived.Subscribe((Action<ResponseMessage>)((msg) =>
+                        client.MessageReceived.Subscribe((msg) =>
                         {
                             try
                             {
@@ -265,7 +267,7 @@ namespace MobileDeliveryClient.API
                                 //isaCommand cmd = MsgProcessor.CommandFactory(msg.Binary);
                                 Logger.Error($"Message Received Manager API: " + ex.Message + " " + msg.ToString());
                             }
-                        }));
+                        });
                         await client.Start();
                         new Thread(() => StartSendingPing(client)).Start();
                         ExitEvent.WaitOne();

@@ -1,4 +1,4 @@
-﻿namespace MobileDeliveryClient
+﻿namespace MobileDeliveryClient.MessageTypes
 {
     /// <summary>
     /// Type that specify happened reconnection
