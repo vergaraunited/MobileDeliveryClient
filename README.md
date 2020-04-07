@@ -1,5 +1,9 @@
-# MobileDeliveryClient
+# MobileDeliveryClient ![MobileDeliveryClient Nuget Versions (UMDNuget Artifacts)][logo]
+## [v1.4.4](https://dev.azure.com/unitedwindowmfg/United%20Mobile%20Delivery/_packaging?_a=package&feed=UMDNuget&package=MobileDeliveryClient&protocolType=NuGet&version=1.3.1&view=versions)
+[logo]: https://github.com/vergaraunited/Docs/blob/master/imgs/png/settings_icon.png (https://dev.azure.com/unitedwindowmfg/United%20Mobile%20Delivery/_packaging?_a=package&feed=UMDNuget&package=MobileDeliveryClient&protocolType=NuGet&version=1.3.1) 
 ## United Mobile Delivery Client - Web Socket abstract dll for use across all Mobile Delivery clients.
+
+
 
 Automatic built in {Ping/Pong} coordinated with the corresponding ping/pong behavior for the Server abstract dll (MobileDeliveryServer).
 
