@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <package >
   <metadata>
+    <id>$id$</id>
+    <version>$version$</version>
+    <title>$title$</title>
+    <authors>$author$</authors>                                                                                       <owners>$author$</owners>
+    <description>$description$</description>
     <id>MobileDeliveryClient</id>
     <version>1.3.0</version>
     <title>MobileDeliveryClient</title>
@@ -12,10 +17,10 @@
     <releaseNotes>Using NuSpec for dependencies, update to use new MobileDeliveryGeneral.</releaseNotes>
     <copyright>Copyright 2020</copyright>
     <tags>MobileDelivery Client UMD</tags>
-    <dependencies>
+    <!--dependencies>
       <dependency id="MobileDeliveryGeneral" version="1.3.0" />
       <dependency id="LibLog" version="5.0.6" />
       <dependency id="Microsoft.IO.RecylcableMemoryStream" version="1.3.0" />
-    </dependencies>
+    </dependencies-->
   </metadata>
 </package>
