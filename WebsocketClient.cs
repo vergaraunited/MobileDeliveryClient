@@ -1,6 +1,4 @@
-using MobileDeliveryClient.Logging;
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Net.WebSockets;
 using System.Text;
@@ -11,6 +9,7 @@ using MobileDeliveryClient.Exceptions;
 using MobileDeliveryClient.Threading;
 using MobileDeliveryClient.MessageTypes;
 using MobileDeliveryClient.Interfaces;
+using MobileDeliveryLogger;
 
 namespace MobileDeliveryClient
 {
@@ -19,7 +18,8 @@ namespace MobileDeliveryClient
     /// </summary>
     public partial class WebsocketClient : IWebsocketClient
     {
-        private static readonly ILog Logger = GetLogger();
+        //private static readonly ILog Logger = GetLogger();
+        //Logger logger;
 
         private readonly WebsocketAsyncLock _locker = new WebsocketAsyncLock();
         private Uri _url;
@@ -196,7 +196,7 @@ namespace MobileDeliveryClient
             }
             catch (Exception e)
             {
-                Logger.Error(e, L($"Failed to dispose client, error: {e.Message}"));
+                Logger.Error(L($"Failed to dispose client, error: {e.Message}"), e);
             }
 
             IsRunning = false;
@@ -302,8 +302,8 @@ namespace MobileDeliveryClient
                 {
                     //_disconnectedSubject.OnNext(DisconnectionType.Error);
                     _disconnectedSubject.Raise(DisconnectionType.Error);
-                    Logger.Error(e, L($"Exception while connecting. " +
-                                      $"Waiting {ErrorReconnectTimeoutMs / 1000} sec before next reconnection try."));
+                    Logger.Error(L($"Exception while connecting. " +
+                                      $"Waiting {ErrorReconnectTimeoutMs / 1000} sec before next reconnection try."), e);
                     await Task.Delay(ErrorReconnectTimeoutMs, token).ConfigureAwait(false);
                     await Reconnect(ReconnectionType.Error).ConfigureAwait(false);
                 }
@@ -428,20 +428,6 @@ namespace MobileDeliveryClient
         {
             var name = Name ?? "CLIENT";
             return $"[WEBSOCKET {name}] {msg}";
-        }
-
-        private static ILog GetLogger()
-        {
-            try
-            {
-                return LogProvider.GetCurrentClassLogger();
-            }
-            catch (Exception e)
-            {
-                Trace.WriteLine($"[WEBSOCKET] Failed to initialize logger, disabling.. " +
-                                $"Error: {e}");
-                return LogProvider.NoOpLogger.Instance;
-            }
         }
 
         private DisconnectionType TranslateTypeToDisconnection(ReconnectionType type)

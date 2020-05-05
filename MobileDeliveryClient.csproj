@@ -19,26 +19,23 @@
     <PackageReleaseNotes>v1.5.3 - Rename the ClientToServerClass from UMDServerConnection sincce the WinSysAPI is also a Server and UMD also acts as a client (to Winsys).
 Use clienturl
 </PackageReleaseNotes>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <AssemblyVersion>1.5.3.0</AssemblyVersion>
     <IncludeSymbols>true</IncludeSymbols>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="MobileDeliveryClient.1.2.1.nupkg" />
+
     <None Remove="MobileDeliveryClient.csproj.vspscc" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="LibLog" Version="5.0.6">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageReference>
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" Version="1.3.0" />
-    <PackageReference Include="MobileDeliveryGeneral" Version="1.5.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MobileDeliveryGeneral\MobileDeliveryGeneral.csproj" />
   </ItemGroup>
   
-  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <Exec Command="nuget restore $(ProjectPath)" />
-  </Target>
+
 </Project>
