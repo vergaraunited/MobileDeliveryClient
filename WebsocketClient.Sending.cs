@@ -1,4 +1,4 @@
-﻿using MobileDeliveryClient.Logging;
+﻿using MobileDeliveryLogger;
 using System;
 using System.Collections.Concurrent;
 using System.Net.WebSockets;

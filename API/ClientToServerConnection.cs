@@ -28,22 +28,22 @@ namespace MobileDeliveryClient.API
         private bool bRunning { get; set; }
         private bool bStopped { get; set; }
         
-        public ClientToServerConnection(SocketSettings set, ref SendMsgDelegate sm, ReceiveMsgDelegate rm)
+        public ClientToServerConnection(string url, ushort port, string name, ref SendMsgDelegate sm, ReceiveMsgDelegate rm)
         {
-            Logger.Info($"{set.name} Server Connection: ws://{set.url}:{set.port}");
-            url = set.clienturl;
-            port = set.clientport;
-            name = set.name;
+            Logger.Info($"{name} Client Connecng to server Connection: ws://{url}:{port}");
+            this.url = url;
+            this.port = port;
+            this.name = name;
             this.rm = rm;
             sm = new SendMsgDelegate(SendCommandToServer);
             Logger.AppName = name;
         }
 
-        public ClientToServerConnection(SocketSettings set)
+        public ClientToServerConnection(string url, ushort port, string name)
         {
-            url = set.clienturl;
-            port = set.clientport;
-            name = set.name;
+            this.url = url;
+            this.port = port;
+            this.name = name;
             Logger.AppName = name;
         }
 
@@ -83,7 +83,7 @@ namespace MobileDeliveryClient.API
                     Thread.Sleep(100);
                 }
             }
-            Logger.Info("UMDServerConnection SendMsgEventAsync {name} " + cmd.ToString());
+            Logger.Info($"UMDServerConnection SendMsgEventAsync {name} {cmd.ToString()}");
             Task retTsk = oclient.Send(cmd.ToArray());
             if (retTsk.Status == TaskStatus.Faulted)
                 Logger.Info($"UMDServerConnection:Task SendMsgEventAsync: faulted {name}  " + cmd.ToString());
@@ -262,7 +262,7 @@ namespace MobileDeliveryClient.API
                             catch (Exception ex)
                             {
                                 //isaCommand cmd = MsgProcessor.CommandFactory(msg.Binary);
-                                Logger.Error($"Message Received Manager API: " + ex.Message + " " + msg.ToString());
+                                Logger.Error($"Message Received Manager API: " + ex.Message + Environment.NewLine + msg.ToString());
                             }
                         });
                         await client.Start();

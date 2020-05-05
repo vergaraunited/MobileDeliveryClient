@@ -1,5 +1,5 @@
-﻿using MobileDeliveryClient.Logging;
-using MobileDeliveryClient.MessageTypes;
+﻿using MobileDeliveryClient.MessageTypes;
+using MobileDeliveryLogger;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
