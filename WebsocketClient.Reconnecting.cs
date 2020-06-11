@@ -72,7 +72,7 @@ namespace MobileDeliveryClient
 
         private void ActivateLastChance()
         {
-            var timerMs = 1000 * 1;
+            var timerMs = 1000 * 15;
             _lastChanceTimer = new Timer(LastChance, null, timerMs, timerMs);
         }
 

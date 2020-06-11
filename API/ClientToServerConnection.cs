@@ -4,12 +4,12 @@ using System.Collections.Generic;
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
-using MobileDeliveryGeneral.Settings;
 using MobileDeliveryGeneral.Utilities;
 using MobileDeliveryGeneral.Interfaces;
 using static MobileDeliveryGeneral.Definitions.MsgTypes;
 using MobileDeliveryClient.Interfaces;
 using MobileDeliveryClient.MessageTypes;
+using MobileDeliveryGeneral.Settings;
 
 namespace MobileDeliveryClient.API
 {
@@ -21,22 +21,27 @@ namespace MobileDeliveryClient.API
         ushort port { get; set; }
         string name { get; set;}
 
+
+        SocketSettings socSet;
+
         ReceiveMsgDelegate rm;
         isaSendMessageCallback sm;
         IWebsocketClient oclient;
+        Timer timer;
 
         private bool bRunning { get; set; }
         private bool bStopped { get; set; }
         
-        public ClientToServerConnection(string url, ushort port, string name, ref SendMsgDelegate sm, ReceiveMsgDelegate rm)
+        public ClientToServerConnection(SocketSettings socSet, ref SendMsgDelegate sm, ReceiveMsgDelegate rm)
         {
-            Logger.Info($"{name} Client Connecng to server Connection: ws://{url}:{port}");
-            this.url = url;
-            this.port = port;
-            this.name = name;
+            Logger.Info($"{name} Client Connectng to server Connection: ws://{url}:{port}");
+            this.url = socSet.url;
+            this.port = socSet.port;
+            this.name = socSet.name;
+            this.socSet = socSet;
             this.rm = rm;
             sm = new SendMsgDelegate(SendCommandToServer);
-            Logger.AppName = name;
+            Logger.AppName = socSet.name;
         }
 
         public ClientToServerConnection(string url, ushort port, string name)
@@ -85,6 +90,8 @@ namespace MobileDeliveryClient.API
             }
             Logger.Info($"UMDServerConnection SendMsgEventAsync {name} {cmd.ToString()}");
             Task retTsk = oclient.Send(cmd.ToArray());
+            if (timer!=null)
+                timer.Change(200, 10000);
             if (retTsk.Status == TaskStatus.Faulted)
                 Logger.Info($"UMDServerConnection:Task SendMsgEventAsync: faulted {name}  " + cmd.ToString());
         }
@@ -102,13 +109,14 @@ namespace MobileDeliveryClient.API
                     {
                         WaitHandle connectedwh = new AutoResetEvent(initialState: false);
                         
-                        connectionTask = new Task(async () => await ConnectAsync(rm, name, connectedwh));
+                        connectionTask = new Task(async () => await ConnectAsync(rm, socSet, connectedwh));
                         connectionTask.Start();
 
                         bool signaled = connectedwh.WaitOne(5000);
                         if (signaled)
                         {
                             Logger.Info("Connected");
+                            //timer = new Timer(SendPing, this, 5000, 10000);
                         }
                         else
                         {
@@ -146,11 +154,11 @@ namespace MobileDeliveryClient.API
         public async void Connect()
         {
             ClientWebSocket ws = new ClientWebSocket();
-            var URL = new Uri("ws://" + url + ":" + port);
+            var URL = new Uri("ws://" + socSet.url + ":" + socSet.port);
 
-            Logger.Info($"UMDServerConnect: {name}");
+            Logger.Info($"UMDServerConnect: {socSet.name}");
 
-            await ConnectAsync(rm, name);
+            await ConnectAsync(rm, socSet);
             //await ws.ConnectAsync(URL, CancellationToken.None);
         }
         void rmconn(ClientToServerConnection that)
@@ -162,7 +170,8 @@ namespace MobileDeliveryClient.API
                 Monitor.TryEnter(lconns, 500, ref locked);
                 if (locked)
                 {
-                    oclient = null;
+                    that.oclient = null;
+                    that.timer.Dispose();
                     conns.Remove(that);
                 }
                 else
@@ -181,7 +190,9 @@ namespace MobileDeliveryClient.API
                 Monitor.TryEnter(lconns, 500, ref locked);
                 if (locked)
                 {
+                    that.timer = new Timer(SendPing, that, 2000, 15000);
                     conns.Add(that);
+                    //timer = new Timer(SendPing, this, 5000, 10000);
                 }
                 else
                     throw new Exception("Deadlock adding a connection to a WinsysDB");
@@ -189,12 +200,12 @@ namespace MobileDeliveryClient.API
             catch (Exception e) { }
             finally { if(locked) Monitor.Exit(lconns);}
         }
-        
-        private async Task ConnectAsync(ReceiveMsgDelegate mp, string name, WaitHandle connwh=null)
+        TimeSpan ts = new TimeSpan();
+        private async Task ConnectAsync(ReceiveMsgDelegate mp, SocketSettings socSet, WaitHandle connwh=null)
         {
             AppDomain.CurrentDomain.ProcessExit += CurrentDomainOnProcessExit;
             Logger.Info("====================================");
-            Logger.Info($"      STARTING WEBSOCKET {name}    ");
+            Logger.Info($"      STARTING WEBSOCKET {socSet.name}    ");
             Logger.Info("        Manager API Client          ");
             Logger.Info("====================================");
 
@@ -202,7 +213,7 @@ namespace MobileDeliveryClient.API
             {
                 Options =
                 {
-                    KeepAliveInterval = TimeSpan.FromSeconds(5),
+                    KeepAliveInterval = TimeSpan.FromSeconds(socSet.keepalive),
                     // Proxy = ...
                     // ClientCertificates = ...
                 }
@@ -214,15 +225,15 @@ namespace MobileDeliveryClient.API
                 {
                     bRunning = true;
                     addconn(this);
-                    var URL = new Uri("ws://" + url + ":" + port);
+                    var URL = new Uri("ws://" + socSet.url + ":" + socSet.port);
                     using (IWebsocketClient client = new WebsocketClient(URL, factory))
                     {
                         string received = null;
                         oclient = client;
                         client.Name = name;
-                        client.ReconnectTimeoutMs = (int)TimeSpan.FromSeconds(60).TotalMilliseconds;
-                        client.ErrorReconnectTimeoutMs = (int)TimeSpan.FromSeconds(60).TotalMilliseconds;
-                        
+                        client.ReconnectTimeoutMs = (int)TimeSpan.FromSeconds(socSet.recontimeout).TotalMilliseconds;
+                        client.ErrorReconnectTimeoutMs = (int)TimeSpan.FromSeconds(socSet.errrecontimeout).TotalMilliseconds;
+
                         client.ReconnectionHappened.Subscribe((Action<ReconnectionType>)((type) =>
                          {
                              Logger.Info($"Reconnecting Manager API Client to type: {type} , url: {client.Url} , name: {name} {client.Name}");
@@ -266,7 +277,8 @@ namespace MobileDeliveryClient.API
                             }
                         });
                         await client.Start();
-                        new Thread(() => StartSendingPing(client)).Start();
+
+                        //new Thread(() => StartSendingPing(client)).Start();
                         ExitEvent.WaitOne();
                     }
                 }
@@ -282,40 +294,54 @@ namespace MobileDeliveryClient.API
             Logger.Info("      Manager API Client            ");
             Logger.Info("====================================");
         }
-        
-        private void StartSendingPing(IWebsocketClient client)
+
+        bool recon = false;
+
+        private static void SendPing(object state)
         {
-            bStopped = false;
-            bool recon = false;
-            while (bRunning)
+            ClientToServerConnection conn = (ClientToServerConnection)state;
+            
+            Logger.Debug($"Manager API sending Ping to {conn.name}");
+
+            if (conn.bRunning && conns.Contains(conn))
             {
-                Thread.Sleep(5000);
-                Logger.Debug($"Manager API sending Ping to {name}");
-
-                if (bRunning && conns.Contains(this))
-                {
-                    Task snd = client.Send(new Command() { command = eCommand.Ping }.ToArray());
-
-                    if (snd.Status == TaskStatus.Faulted && !recon)
-                    {
-                        recon = true;
-                        Logger.Info($"Server Disconnected! {name}");
-                        Disconnect();
-                        Thread.Sleep(5000);
-                        if (!bRunning)
-                            StartAsync();
-                        else
-                            return;
-                    }
-                    while (snd.Status == TaskStatus.Running)
-                        Thread.Sleep(10);
-                }
+                if (conn.oclient == null)
+                    conn.bRunning = false;
                 else
-                { bRunning = false; rmconn(this); }
+                {
+                    WebsocketClient ws = ((MobileDeliveryClient.WebsocketClient)conn.oclient);
+                    if (ws.IsRunning)
+                    {
+                        Task snd = conn.oclient.Send(new Command() { command = eCommand.Ping }.ToArray());
+
+                        if (snd.Status == TaskStatus.Faulted && !conn.recon)
+                        {
+                            conn.recon = true;
+                            Logger.Info($"Server Disconnected, reconnect! {conn.name}");
+                            // Disconnect();
+                            Thread.Sleep(600);
+                            if (!conn.bRunning)
+                                conn.StartAsync();
+                            Logger.Info($"Server Disconnected Done reconnecting! {conn.name}");
+                            conn.recon = false;
+                        }
+                    }
+                    else if (!conn.recon)
+                    {
+                        conn.recon = true;
+                        Logger.Info($"Server Disconnected, reconnect! {conn.name}");
+                        conn.StartAsync();
+                        Thread.Sleep(600);
+                        Logger.Info($"Server Disconnected Done reconnecting! {conn.name}");
+                        conn.recon = false;
+                    }
+                }
             }
-            bStopped=true;
+            else
+            { conn.bRunning = false; }
         }
 
+      
         private static async Task SwitchUrl(IWebsocketClient client)
         {
             while (true)
