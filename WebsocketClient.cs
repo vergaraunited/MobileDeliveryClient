@@ -71,7 +71,7 @@ namespace MobileDeliveryClient
             {
                 var client = new ClientWebSocket2
                 {
-                    Options = { KeepAliveInterval = new TimeSpan(0, 0, 2, 0) ,  }
+                    Options = { KeepAliveInterval = new TimeSpan(0, 0, 0, 30) ,  }
                 };
                 client.Options.RequestHeaders.Add("name","WebsocketClient");
                // client.Options.Ser\.Add(new System.Net.Cookie("ClientSocket"))
