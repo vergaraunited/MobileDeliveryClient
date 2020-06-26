@@ -17,6 +17,7 @@ namespace MobileDeliveryClient.Interfaces
         /// </summary>
         Uri Url { get; set; }
 
+        DateTime lstMsgSent { get; }
         /// <summary>
         /// Stream with received message (raw format)
         /// </summary>

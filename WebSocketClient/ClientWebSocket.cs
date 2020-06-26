@@ -28,7 +28,7 @@ public class ClientWebSocketOptions2
         ReceiveBufferSize = 16384;
         SendBufferSize = 16384;
         //KeepAliveInterval = WebSocket.DefaultKeepAliveInterval;
-        KeepAliveInterval = new TimeSpan(0,0,0,30);
+        KeepAliveInterval = new TimeSpan(0,0,60,00);
         RequestedSubProtocols = new List<string>();
         RequestHeaders = new Dictionary<string, string>();
         this.Proxy = WebRequest.DefaultWebProxy;

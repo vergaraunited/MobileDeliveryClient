@@ -25,8 +25,11 @@ namespace MobileDeliveryClient
         private Uri _url;
         private Timer _lastChanceTimer;
         private readonly Func<Uri, CancellationToken, Task<WebSocket>> _connectionFactory;
+        public DateTime lstMsgRcvd { get { return _lastReceivedMsg; } }
+        private DateTime _lastReceivedMsg = DateTime.UtcNow;
+        public DateTime lstMsgSent { get { return _lastSentMsg; } }
+        private DateTime _lastSentMsg = DateTime.UtcNow;
 
-        private DateTime _lastReceivedMsg = DateTime.UtcNow; 
 
         private bool _disposing;
         private bool _reconnecting;
@@ -71,7 +74,7 @@ namespace MobileDeliveryClient
             {
                 var client = new ClientWebSocket2
                 {
-                    Options = { KeepAliveInterval = new TimeSpan(0, 0, 0, 30) ,  }
+                    Options = { KeepAliveInterval = new TimeSpan(0, 0, 60, 00) ,  }
                 };
                 client.Options.RequestHeaders.Add("name","WebsocketClient");
                // client.Options.Ser\.Add(new System.Net.Cookie("ClientSocket"))
@@ -307,19 +310,19 @@ namespace MobileDeliveryClient
                     await Task.Delay(ErrorReconnectTimeoutMs, token).ConfigureAwait(false);
                     await Reconnect(ReconnectionType.Error).ConfigureAwait(false);
                 }
-                // }
-                //  else
+            }
+            else { 
                 Logger.Error("StartClient: Client already running.  Monitor Locked!");
-                // }
-                //catch (Exception ex)
-                //{ Logger.Error("StartClient Exception: " + ex.Message); }
-                //finally
-                //{
-                //   // if (blockTaken)
-                //        Monitor.Exit(bstarting);
-                //}
-                IsRunning = false;
-                sIsRunning = false;
+
+            //catch (Exception ex)
+            //{ Logger.Error("StartClient Exception: " + ex.Message); }
+            //finally
+            //{
+            //   // if (blockTaken)
+            //        Monitor.Exit(bstarting);
+            //}
+            //IsRunning = false;
+            //    sIsRunning = false;
             }
         }
 
