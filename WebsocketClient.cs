@@ -355,6 +355,9 @@ namespace MobileDeliveryClient
                                 if(buffer.Array != null)
                                     ms.Write(buffer.Array, buffer.Offset, result.Count);
                             }
+                            catch(TaskCanceledException exit) {
+                                Logger.Error("WebSocketClient Server disconnect: " + exit.Message);
+                                break; }
                             catch (Exception ex) {
                                 sIsRunning = false;
                                 Logger.Error("WebSocketClient Exception: " + ex.Message); }
@@ -382,21 +385,24 @@ namespace MobileDeliveryClient
 
                 } while (client.State == WebSocketState.Open && !token.IsCancellationRequested);
             }
-            catch (TaskCanceledException) // e)
+            catch (TaskCanceledException e)
             {
-               // Logger.Error(e, L($"Task was canceled, ignore. Exception: '{e.Message}'"));
+                Logger.Error($"Task was cancelled, ignore.", e);
             }
-            catch (OperationCanceledException )//e)
+            catch (OperationCanceledException e)
             {
-             //   Logger.Error(e, L($"Operation was canceled, ignore. Exception: '{e.Message}'"));
+                Logger.Error($"Operation was canceled, ignore.", e);
+                //   Logger.Error(e, L($"Operation was canceled, ignore. Exception: '{e.Message}'"));
             }
             catch (ObjectDisposedException)// e)
             {
+                Logger.Error($"Client was disposed, ignore.", e);
               //  Logger.Error(e, L($"Client was disposed, ignore. Exception: '{e.Message}'"));
             }
             catch (Exception e)
             {
-               // Logger.Error(e, L($"Error while listening to websocket stream, error: '{e.Message}'"));
+                Logger.Error($"Error while listening to websocket stream, ignore.", e);
+                // Logger.Error(e, L($"Error while listening to websocket stream, error: '{e.Message}'"));
             }
 
 

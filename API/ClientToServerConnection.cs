@@ -130,16 +130,17 @@ namespace MobileDeliveryClient.API
                         
                         connectionTask = new Task(async () => await ConnectAsync(rm, socSet, connectedwh));
                         connectionTask.Start();
-
+                        bRunning = true;
                         bool signaled = connectedwh.WaitOne(10000);
                         if (signaled)
                         {
                             Logger.Info("Connected");
-                            bRunning = true;
+                            
                             //timer = new Timer(SendPing, this, 5000, 10000);
                         }
                         else
                         {
+                            bRunning = false;
                             Logger.Info("Connection Timedout");
                         }
 
@@ -243,25 +244,17 @@ namespace MobileDeliveryClient.API
             Logger.Info("        Manager API Client          ");
             Logger.Info("====================================");
 
+            Func<ClientWebSocket> factory;
 
-            var factory = new Func<ClientWebSocket>(() => new ClientWebSocket
-            {
-
-                Options =
-                    {
-                        KeepAliveInterval = TimeSpan.FromMilliseconds(socSet.keepalive)
-                        // Proxy = ...
-                        // ClientCertificates = ...
-                    }
-            });
-
-            if (!socSet.name.Contains("VM"))
-            {
-                factory = new Func<ClientWebSocket>(() => new ClientWebSocket
+            factory = socSet.name.Contains("VM") ?
+                new Func<ClientWebSocket>(() => new ClientWebSocket
                 {
+                    Options = { KeepAliveInterval = TimeSpan.FromMilliseconds(socSet.keepalive) }
+                }) :
+                new Func<ClientWebSocket>(() => new ClientWebSocket {
                     Options = { }
                 });
-            }
+
             try
             {
                 addconn(this);
