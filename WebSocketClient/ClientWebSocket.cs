@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MobileDeliverySettings.Settings;
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.WebSockets;
@@ -25,10 +26,14 @@ public class ClientWebSocketOptions2
 
     public ClientWebSocketOptions2()
     {
-        ReceiveBufferSize = 16384;
-        SendBufferSize = 16384;
+        //ReceiveBufferSize = 16384;
+        //SendBufferSize = 16384;
+
+        ReceiveBufferSize = GlobalSetting.Config.srvSet.socketbuffsize;
+        SendBufferSize = GlobalSetting.Config.srvSet.socketbuffsize;
+
         //KeepAliveInterval = WebSocket.DefaultKeepAliveInterval;
-        KeepAliveInterval = new TimeSpan(0,0,60,00);
+        KeepAliveInterval = new TimeSpan(0,0, Int32.Parse(UMDAppConfig.dSettings["KeepAliveInterval"])/1000, 00);
         RequestedSubProtocols = new List<string>();
         RequestHeaders = new Dictionary<string, string>();
         this.Proxy = WebRequest.DefaultWebProxy;

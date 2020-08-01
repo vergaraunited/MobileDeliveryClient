@@ -35,6 +35,7 @@ Use clienturl
 
   <ItemGroup>
     <ProjectReference Include="..\MobileDeliveryGeneral\MobileDeliveryGeneral.csproj" />
+    <ProjectReference Include="..\MobileDeliverySettings\MobileDeliverySettings.csproj" />
   </ItemGroup>
   
 

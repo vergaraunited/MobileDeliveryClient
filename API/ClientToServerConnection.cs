@@ -9,7 +9,7 @@ using MobileDeliveryGeneral.Interfaces;
 using static MobileDeliveryGeneral.Definitions.MsgTypes;
 using MobileDeliveryClient.Interfaces;
 using MobileDeliveryClient.MessageTypes;
-using MobileDeliveryGeneral.Settings;
+using MobileDeliverySettings.Settings;
 
 namespace MobileDeliveryClient.API
 {
@@ -18,15 +18,20 @@ namespace MobileDeliveryClient.API
     public class ClientToServerConnection
     {
         private readonly ManualResetEvent ExitEvent = new ManualResetEvent(false);
-        static Dictionary<int, IWebsocketClient> dClients = new Dictionary<int, IWebsocketClient>();
+        //static Dictionary<int, IWebsocketClient> dClients = new Dictionary<int, IWebsocketClient>();
         string url { get; set; }
         ushort port { get; set; }
         public string Name;
         public string name { get { return Name; } private set { Name = value; if (ev_name != null) ev_name(Name); } }
 
         event ev_name_hook ev_name;
-        //static Semaphore[] _semLocks;
-        static Dictionary<int, Semaphore> dLocks = new Dictionary<int, Semaphore>();
+        public class clientClass
+        {
+            public Semaphore sem;
+            public IWebsocketClient client;
+            public Timer timer;
+        }
+        static Dictionary<int, clientClass> dLocks = new Dictionary<int, clientClass>();
         public bool IsConnected
         {
             get { return bRunning; }
@@ -108,11 +113,14 @@ namespace MobileDeliveryClient.API
                 }
             }
             Logger.Info($"UMDServerConnection SendMsgEventAsync {name} {cmd.ToString()}");
-            Task retTsk = oclient.Send(cmd.ToArray());
-            if (timer!=null)
-                timer.Change(200, 10000);
-            if (retTsk.Status == TaskStatus.Faulted)
-                Logger.Info($"UMDServerConnection:Task SendMsgEventAsync: faulted {name}  " + cmd.ToString());
+            if (oclient != null)
+            {
+                Task retTsk = oclient.Send(cmd.ToArray());
+                if (timer != null)
+                    timer.Change(200, 10000);
+                if (retTsk.Status == TaskStatus.Faulted)
+                    Logger.Info($"UMDServerConnection:Task SendMsgEventAsync: faulted {name}  " + cmd.ToString());
+            }
         }
 
         Task connectionTask;
@@ -124,18 +132,19 @@ namespace MobileDeliveryClient.API
                 Monitor.TryEnter(lconn, 500, ref locked);
                 if (locked)
                 {
-                    if (!bRunning)
+                    if (!bRunning && !bStopped)
                     {
+                        bRunning = true;
                         WaitHandle connectedwh = new AutoResetEvent(initialState: false);
                         
                         connectionTask = new Task(async () => await ConnectAsync(rm, socSet, connectedwh));
                         connectionTask.Start();
-                        bRunning = true;
+                        
                         bool signaled = connectedwh.WaitOne(10000);
                         if (signaled)
                         {
                             Logger.Info("Connected");
-                            
+                            bRunning = true;
                             //timer = new Timer(SendPing, this, 5000, 10000);
                         }
                         else
@@ -159,12 +168,14 @@ namespace MobileDeliveryClient.API
         public void Disconnect()
         {
             Logger.Info("Disconnecting {name}.");
+
             bRunning = false;
-            int cnt = 0;
-            while (!bStopped && cnt++<=10)
-                Thread.Sleep(100);
+
+           // int cnt = 0;
+            //while (bRunning && cnt++<=10)
+            //    Thread.Sleep(100);
             ExitEvent.Set();
-            ExitEvent.Reset();
+            
         }
         public delegate void DelSubscribe();
         object lconns = new object();
@@ -193,46 +204,41 @@ namespace MobileDeliveryClient.API
                 Monitor.TryEnter(lconns, 500, ref locked);
                 if (locked)
                 {
-                    that.oclient = null;
-                    that.timer.Dispose();
+                    ExitEvent.Reset();
+                  //  that.oclient = null;
+                    dLocks[that.socSet.port].timer.Dispose();
                     //conns.Remove(that);
-                    dLocks[that.socSet.port].Release();
-                    if (dClients.ContainsKey(that.socSet.port))
-                        dClients.Remove(that.socSet.port);
+                    dLocks[that.socSet.port].sem.Release();
+                    //if (dClients.ContainsKey(that.socSet.port))
+                    //    dClients.Remove(that.socSet.port);
                     
                 }
                 else
                     throw new Exception($"Deadlock removing a connection to {that.socSet.name}");
             }
-            catch (Exception e) { }
+            catch (Exception e) { Logger.Error($"Removing Connection error: {that.socSet.name}.", e); }
             finally { if(locked) Monitor.Exit(lconns); }
         }
 
-        bool addconn(ClientToServerConnection that)
+        bool addconn(IWebsocketClient client)
         {
-            bool locked = false;
             try
             {
                 Logger.Info("UMDServerConnect: Add Connection" + name);
 
-                Monitor.TryEnter(lconns, 500, ref locked);
-                if (locked)
+                if (!dLocks.ContainsKey(socSet.port))
                 {
-                    that.timer = new Timer(SendPing, that, 2000, 15000);
-                    //conns.Add(that);
-                    //timer = new Timer(SendPing, this, 5000, 10000);
-                    dClients.Add(that.socSet.port, that.oclient);
-                    if (!dLocks.ContainsKey(socSet.port))
-                    {
-                        dLocks.Add(socSet.port, new Semaphore(1, 1, socSet.port.ToString()));
-                        return true;
-                    }
+                    int ctm = Int32.Parse(MobileDeliverySettings.Settings.UMDAppConfig.dSettings["KeepAliveInterval"]);
+                    int tm =  ctm / 2;
+                    var timer = new Timer(SendPing, client, 2000, tm);
+                    bRunning = true;
+                    dLocks.Add(client.Url.Port, new clientClass() { sem = new Semaphore(1, 1, client.Url.ToString()), client=client, timer=timer } );
+                    return true;
                 }
-                //else
-                  //  throw new Exception("Deadlock adding a connection to a WinsysDB");
+                else
+                    bRunning = false;
             }
-            catch (Exception e) { }
-            finally { if(locked) Monitor.Exit(lconns);}
+            catch (Exception e) { Logger.Error($"ClientToServerConnection: Add Connection {name}.", e); }
             return false;
         }
         TimeSpan ts = new TimeSpan();
@@ -246,21 +252,23 @@ namespace MobileDeliveryClient.API
 
             Func<ClientWebSocket> factory;
 
-            factory = socSet.name.Contains("VM") ?
+            factory = socSet.name.ToUpper().Contains("VM") ?
                 new Func<ClientWebSocket>(() => new ClientWebSocket
                 {
                     Options = { KeepAliveInterval = TimeSpan.FromMilliseconds(socSet.keepalive) }
                 }) :
                 new Func<ClientWebSocket>(() => new ClientWebSocket {
-                    Options = { }
+                    Options = { KeepAliveInterval = TimeSpan.FromMilliseconds(socSet.keepalive) }
                 });
 
             try
             {
-                addconn(this);
-                //dLocks[socSet.port].GetSafeWaitHandle();
-                if (!bRunning && dLocks[socSet.port].WaitOne(50))
+
+                if (!bRunning)
                 {
+                    if (dLocks.ContainsKey(socSet.port) && (!(dLocks.ContainsKey(socSet.port) ^ dLocks[socSet.port].sem.WaitOne(50))))
+                        return;
+
                     bRunning = true;
                     var URL = new Uri("ws://" + socSet.url + ":" + socSet.port);
                     using (IWebsocketClient client = new WebsocketClient(URL, factory))
@@ -292,7 +300,7 @@ namespace MobileDeliveryClient.API
                                     received = msg.Text;
                                     Logger.Debug($"Message To Manager API Client From : {received}, name {name} {client.Name}");
                                     this.name = $"{client.Name} {received}";
-                                    //Console.Title = this.name;
+                                    Console.Title = this.name;
                                 }
                                 else if (msg.Binary != null)
                                 {
@@ -300,14 +308,14 @@ namespace MobileDeliveryClient.API
 
                                     if (cmd.command == eCommand.Ping)
                                     {
-                                        Logger.Debug($"Ping To Manager API Client, Reply Pong to {name} {client.Name}");
+                                        Logger.Debug($"Client Got Pinged - Ping To Manager API Client, Reply Pong to {name} {client.Name}");
                                         client.Send(new Command() { command = eCommand.Pong }.ToArray());
                                     }
                                     else if (cmd.command == eCommand.Pong)
-                                        Logger.Debug($"Manager API Received Pong from {name} {client.Name}");
+                                        Logger.Debug($"Client Got Ponged - Manager API Received Pong from {name} {client.Name} {client}");
                                     else
                                     {
-                                        Logger.Info($"Manager API Received msg from {name} {client.Name}");
+                                        Logger.Info($"Client Msg received - Manager API Received msg from {name} {client.Name}");
                                         mp(cmd);
                                     }
                                 }
@@ -315,7 +323,7 @@ namespace MobileDeliveryClient.API
                             catch (Exception ex)
                             {
                                 //isaCommand cmd = MsgProcessor.CommandFactory(msg.Binary);
-                                Logger.Error($"Message Received Manager API: " + ex.Message + Environment.NewLine + msg.ToString());
+                                Logger.Error($"Client Message Received Manager API: " + ex.Message + Environment.NewLine + msg.ToString());
                             }
                         });
 
@@ -323,6 +331,9 @@ namespace MobileDeliveryClient.API
 
                         if (connwh != null)
                             ((AutoResetEvent)connwh).Set();
+
+                        if (!addconn(client))
+                            return;
 
                         //new Thread(() => StartSendingPing(client)).Start();
                         ExitEvent.WaitOne();
@@ -342,68 +353,49 @@ namespace MobileDeliveryClient.API
         }
 
         Object olock = new object();
-
-
         object reconlock = new object();
 
-        bool recon = false;
 
         private static void SendPing(object state)
         {
-            ClientToServerConnection conn = (ClientToServerConnection)state;
-            
-            Logger.Debug($"{conn.name} sending Ping");
+            Logger.Debug($"Sending PING"); 
 
-            if (conn.oclient != null && conn.oclient.IsRunning)// && conns.Contains(conn))
-            {
-                if (conn.oclient == null)
-                    conn.bRunning = false;
-                else
+            IWebsocketClient client = (IWebsocketClient)state;
+
+            if (client == null)
+                return;
+
+            if (client != null)
+            { 
+                var ts = DateTime.Now.ToUniversalTime().TimeOfDay.Subtract(client.lstMsgRcvd.ToUniversalTime().TimeOfDay).TotalMilliseconds;
+                Logger.Debug($"Sending PING {client.Name} timespan = {client.lstMsgRcvd.ToUniversalTime().TimeOfDay} - {DateTime.Now.ToUniversalTime().TimeOfDay} = {ts}");
+                if (ts > Int32.Parse(MobileDeliverySettings.Settings.UMDAppConfig.dSettings["KeepAliveInterval"])/2)
                 {
-                    //var ts = DateTime.Now.TimeOfDay.Subtract(conn.oclient.lstMsgSent.TimeOfDay).TotalMilliseconds;
-                    var ts = DateTime.Now.ToUniversalTime().TimeOfDay.Subtract(conn.oclient.lstMsgSent.ToUniversalTime().TimeOfDay).TotalMilliseconds;
-                    if (ts > conn.oclient.ReconnectTimeoutMs)
+                    if (client.IsRunning)
                     {
-                        WebsocketClient ws = ((MobileDeliveryClient.WebsocketClient)conn.oclient);
-                        if (ws.IsRunning)
+                        Task snd = client.Send(new Command() { command = eCommand.Ping }.ToArray());
+
+                        if (snd.Status == TaskStatus.RanToCompletion)
                         {
-                            Task snd = conn.oclient.Send(new Command() { command = eCommand.Ping }.ToArray());
-
-                            if (snd.Status == TaskStatus.Faulted)// && !conn.recon)
-                            {
-                                // conn.recon = true;
-                                Logger.Info($"Server Connection Defaulted, reconnect! {conn.name} {conn.oclient.Url}");
-
-                                //Thread.Sleep(600);
-                                //if (!conn.bRunning)
-                                //    conn.StartAsync();
-                                // Logger.Info($"Server Disconnected Done reconnecting! {conn.name} {conn.oclient.Url}");
-
-                                conn.bRunning = false;
-                            }
+                            Logger.Info($"Client Ping Sent Succesfully! {client.Name} {client.Url}");
+                            return;
                         }
-                        else //if (!conn.recon)
+                        else if (snd.Status == TaskStatus.Faulted)// && !conn.recon)
                         {
-                            conn.bRunning = false;
-                            Logger.Info($"Server Disconnected, reconnect! {conn.name} {conn.oclient.Url}");
+                            Logger.Info($"Client Ping Faulted - Server Connection Defaulted, reconnect! {client.Name} {client.Url}");
                         }
                     }
+                    else if (client.IsReconnectionEnabled)
+                    {
+                        Logger.Info($"Client Ping Failed - Server Disconnected IsReconnectionEnabled , reconnecting?! {client.Name} {client.Url}");
+                    }
+                    else 
+                    {
+                        Logger.Info($"Client Ping Failed - Client not running / Disconnected, reconnect! {client.Name} {client.Url}");
+                    }
+                    client.Reconnect();
                 }
             }
-            else
-                conn.bRunning = false;
-            //{
-            //    //conn.bRunning = false;
-            //   // if (!conn.recon)
-            //    {
-            //       // conn.recon = true;
-            //        Logger.Info($"Server Disconnected, reconnect! {conn.name}");
-            //       // conn.StartAsync();
-            //       // Thread.Sleep(600);
-            //        Logger.Info($"Server Is not Running! {conn.name} {conn.oclient.Url}");
-            //        //conn.recon = false;
-            //    }
-            //}
         }
 
       

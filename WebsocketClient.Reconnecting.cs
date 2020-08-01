@@ -60,7 +60,7 @@ namespace MobileDeliveryClient
             {
                 // reconnection disabled, do nothing
                 IsStarted = false;
-                _reconnecting = false;
+                _reconnecting = false; 
                 return;
             }
 
@@ -84,9 +84,11 @@ namespace MobileDeliveryClient
 
         private void LastChance(object state)
         {
-            var timeoutMs = Math.Abs(ReconnectTimeoutMs);
-
+            var timeoutMs = Math.Abs(ReconnectTimeoutMs);;
             var diffMs = Math.Abs(DateTime.UtcNow.Subtract(lstMsgRcvd).TotalMilliseconds);
+
+            Logger.Debug($"WebSocketClient ({Name}) LastChance.  timespan = {lstMsgRcvd.ToUniversalTime().TimeOfDay} - {DateTime.Now.ToUniversalTime().TimeOfDay} = {diffMs}");
+
             if (diffMs > timeoutMs)
             {
                 if (!IsReconnectionEnabled)
@@ -96,7 +98,7 @@ namespace MobileDeliveryClient
                     return;
                 }
 
-                Logger.Debug(L($"Last message received more than {diffMs:F} ms ago. Reset timeout set to {timeoutMs:F}. Hard restart.."));
+                Logger.Debug(L($"WebSocketClient ({Name}) Last message received more than {diffMs:F} ms ago. Reset timeout set to {timeoutMs:F}. Hard restart.."));
 
                 DeactivateLastChance();
 #pragma warning disable 4014

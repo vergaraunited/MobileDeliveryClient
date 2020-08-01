@@ -80,7 +80,7 @@ namespace MobileDeliveryClient
                     }
                     catch (Exception e)
                     {
-                        Logger.Error(L($"Failed to send text message: '{message}'. Error: {e.Message}"));
+                        Logger.Error($"Failed to send text message: '{message}'.",e);
                     }
                 }
             }
@@ -122,24 +122,26 @@ namespace MobileDeliveryClient
                     }
                 }
             }
-            catch (TaskCanceledException)
+            catch (TaskCanceledException ex)
             {
                 // task was canceled, ignore
+                Logger.Error($"Cancellation Token", ex);
             }
             catch (OperationCanceledException ex)
             {
                 // operation was canceled, ignore
-                Logger.Error("MobileDeliveryClient::WebSocketClient - OperationCanceledException Exce[ption: " + ex.Message);
+                Logger.Error("MobileDeliveryClient::WebSocketClient - OperationCanceledException Exception: ", ex);
             }
             catch (Exception e)
             {
                 if (_cancellationTotal.IsCancellationRequested || _disposing)
                 {
+                    Logger.Info($"_cancellationTotal.IsCancellationRequested || _disposing.", e);
                     // disposing/canceling, do nothing and exit
                     return;
                 }
 
-                Logger.Trace(L($"Sending binary thread failed, error: {e.Message}. Creating a new sending thread."));
+                Logger.Info($"Sending binary thread failed. Creating a new sending thread.",e);
                 StartBackgroundThreadForSendingBinary();
             }
 

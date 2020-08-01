@@ -10,6 +10,7 @@ using MobileDeliveryClient.Threading;
 using MobileDeliveryClient.MessageTypes;
 using MobileDeliveryClient.Interfaces;
 using MobileDeliveryLogger;
+using MobileDeliverySettings.Settings;
 
 namespace MobileDeliveryClient
 {
@@ -25,7 +26,7 @@ namespace MobileDeliveryClient
         private Uri _url;
         private Timer _lastChanceTimer;
         private readonly Func<Uri, CancellationToken, Task<WebSocket>> _connectionFactory;
-        public DateTime lstMsgRcvd { get { return _lastReceivedMsg; } }
+        public DateTime lstMsgRcvd { get { return _lastReceivedMsg; } set { _lastReceivedMsg = value; } }
         private DateTime _lastReceivedMsg = DateTime.UtcNow;
         public DateTime lstMsgSent { get { return _lastSentMsg; } }
         private DateTime _lastSentMsg = DateTime.UtcNow;
@@ -39,9 +40,9 @@ namespace MobileDeliveryClient
         private CancellationTokenSource _cancellation;
         private CancellationTokenSource _cancellationTotal;
 
-        public ObservableEvent<ResponseMessage> _messageReceivedSubject { get; private set; }
-        public ObservableEvent<ReconnectionType> _reconnectionSubject { get; private set; }
-        public ObservableEvent<DisconnectionType> _disconnectedSubject { get; private set; }
+        ObservableEvent<ResponseMessage> _messageReceivedSubject { get; set; }
+        ObservableEvent<ReconnectionType> _reconnectionSubject { get; set; }
+        ObservableEvent<DisconnectionType> _disconnectedSubject { get; set; }
 
         //private readonly Subject<ResponseMessage> _messageReceivedSubject = new Subject<ResponseMessage>();
         //private readonly Subject<ReconnectionType> _reconnectionSubject = new Subject<ReconnectionType>();
@@ -74,9 +75,9 @@ namespace MobileDeliveryClient
             {
                 var client = new ClientWebSocket2
                 {
-                    Options = { KeepAliveInterval = new TimeSpan(0, 0, 60, 00) ,  }
+                    Options = { KeepAliveInterval = new TimeSpan(0, 0, Int32.Parse(UMDAppConfig.dSettings["KeepAliveInterval"])/1000, 00) ,  }
                 };
-                client.Options.RequestHeaders.Add("name","WebsocketClient");
+                client.Options.RequestHeaders.Add("name",$"WebsocketClient {Name}");
                // client.Options.Ser\.Add(new System.Net.Cookie("ClientSocket"))
                 await client.ConnectAsync(uri, token).ConfigureAwait(false);
                 return client;
@@ -277,11 +278,12 @@ namespace MobileDeliveryClient
         static object bstarting = new object();
         private async Task StartClient(Uri uri, CancellationToken token, ReconnectionType type)
         {
+            Logger.Debug($"WebSocketClient: Start Client {uri.Port}.");
             //try
             //{
             //if (!IsRunning)
             //if (Monitor.TryEnter(bstarting, 100))
-            if (!sIsRunning)
+            if (!IsRunning)
             {
                 IsRunning = true;
                 sIsRunning = true;
@@ -305,8 +307,7 @@ namespace MobileDeliveryClient
                 {
                     //_disconnectedSubject.OnNext(DisconnectionType.Error);
                     _disconnectedSubject.Raise(DisconnectionType.Error);
-                    Logger.Error(L($"Exception while connecting. " +
-                                      $"Waiting {ErrorReconnectTimeoutMs / 1000} sec before next reconnection try."), e);
+                    Logger.Error($"Exception while connecting. Waiting {ErrorReconnectTimeoutMs / 1000} sec before next reconnection try.", e);
                     await Task.Delay(ErrorReconnectTimeoutMs, token).ConfigureAwait(false);
                     await Reconnect(ReconnectionType.Error).ConfigureAwait(false);
                 }
@@ -342,7 +343,7 @@ namespace MobileDeliveryClient
             {
                 do
                 {
-                    var buffer = new ArraySegment<byte>(new byte[8192]);
+                    var buffer = new ArraySegment<byte>(new byte[GlobalSetting.Config.srvSet.socketbuffsize]);
 
                     using (var ms = new MemoryStream())
                     {
@@ -352,15 +353,17 @@ namespace MobileDeliveryClient
                             try
                             {
                                 result = await client.ReceiveAsync(buffer, token);
-                                if(buffer.Array != null)
+                                Logger.Debug($"Listen Socket received async: {result.Count}.");
+                                _lastReceivedMsg = DateTime.UtcNow;
+                                if (buffer.Array != null)
                                     ms.Write(buffer.Array, buffer.Offset, result.Count);
                             }
                             catch(TaskCanceledException exit) {
-                                Logger.Error("WebSocketClient Server disconnect: " + exit.Message);
+                                Logger.Error($"WebSocketClient Server disconnect",exit);
                                 break; }
                             catch (Exception ex) {
                                 sIsRunning = false;
-                                Logger.Error("WebSocketClient Exception: " + ex.Message); }
+                                Logger.Error($"WebSocketClient Exception.",ex); }
                         } while (!result.EndOfMessage);
 
                         ms.Seek(0, SeekOrigin.Begin);
@@ -377,8 +380,9 @@ namespace MobileDeliveryClient
                             message = ResponseMessage.BinaryMessage(data);
                         }
 
-                        Logger.Trace(L($"Received:  {message}"));
+                        Logger.Debug(L($"WebsocketClient {this._url} Received:  {message} PrevMsg Time: {_lastReceivedMsg}"));
                         _lastReceivedMsg = DateTime.UtcNow;
+                        Logger.Debug(L($"WebsocketClient {this._url} Received:  {message} New LastMsg Time: {_lastReceivedMsg}"));
                         //_messageReceivedSubject.OnNext(message);
                         _messageReceivedSubject.Raise(message);
                     }
@@ -394,7 +398,7 @@ namespace MobileDeliveryClient
                 Logger.Error($"Operation was canceled, ignore.", e);
                 //   Logger.Error(e, L($"Operation was canceled, ignore. Exception: '{e.Message}'"));
             }
-            catch (ObjectDisposedException)// e)
+            catch (ObjectDisposedException e)
             {
                 Logger.Error($"Client was disposed, ignore.", e);
               //  Logger.Error(e, L($"Client was disposed, ignore. Exception: '{e.Message}'"));
@@ -409,6 +413,7 @@ namespace MobileDeliveryClient
             if (_disposing || _reconnecting || _stopping || !IsStarted)
                 return;
 
+            sIsRunning = false;
             // listening thread is lost, we have to reconnect
 #pragma warning disable 4014
             ReconnectSynchronized(ReconnectionType.Lost);
